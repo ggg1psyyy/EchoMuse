@@ -78,12 +78,18 @@ text = re.sub(r'^version:.*$', f'version: "{version}"',    text, count=1, flags=
 # controller's own ports stay: GA, EA and dev are never run together.
 text = re.sub(r'^(  esphome_port_base:) \d+$', r'\1 16201', text, count=1, flags=re.M)
 
+# DEV ONLY (branch dev/tools): admit loopback through the ingress-only gate,
+# so tools/push_file.py and devshell.py work from inside this add-on's
+# container (em_ingressauth.DEV_ADMIT_LOOPBACK). Never in the released add-on.
+text = re.sub(r'^(environment:\n)', r'\1  EM_DEV_ADMIT_LOOPBACK: "1"\n', text, count=1, flags=re.M)
+
 open(path, "w", encoding="utf-8").write(text)
 
 # Check the KEY, not the substring — several comments in this file mention
 # `image:` while explaining the pin, and matching those made the guard fail
 # on a rewrite that had worked.
-missing = [k for k in ("slug:", "version:", "ingress:", "  esphome_port_base: 16201")
+missing = [k for k in ("slug:", "version:", "ingress:", "  esphome_port_base: 16201",
+                       '  EM_DEV_ADMIT_LOOPBACK: "1"')
            if not re.search(rf'^{k}', text, re.M)]
 if missing or re.search(r'^image:', text, re.M):
     sys.exit(f"config.yaml rewrite failed: {missing or 'image: key still present'}")

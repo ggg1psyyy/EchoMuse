@@ -43,6 +43,26 @@ INGRESS_ONLY = os.environ.get("ECHOMUSE_HOME_ASSISTANT_INGRESS") == "true"
 # Supervisor's gateway address. Every ingress request is proxied from here.
 INGRESS_GATEWAY_IP = "172.30.32.2"
 
+# DEV ONLY (branch dev/tools, never upstream): the local dev add-on also
+# admits loopback, so the controller's own tools (tools/push_file.py,
+# tools/devshell.py), run inside its container, can reach the API they were
+# written for. Set only by tools/make_dev_addon.sh in the dev add-on's
+# config.yaml. With host_network that means any process on the HA host, which
+# still needs an EchoMuse session token: loopback passes the network gate
+# only, and is never trusted as Supervisor's identity headers are (decide()
+# keeps requiring the gateway).
+DEV_ADMIT_LOOPBACK = os.environ.get("EM_DEV_ADMIT_LOOPBACK") == "1"
+LOOPBACK = ("127.0.0.1", "::1")
+
+
+def admits_peer(remote: Optional[str], *, ingress_only: bool, dev_loopback: bool) -> bool:
+    """Whether the ingress-only gate lets a peer through."""
+    if not ingress_only:
+        return True
+    if remote == INGRESS_GATEWAY_IP:
+        return True
+    return dev_loopback and remote in LOOPBACK
+
 
 class IngressIdentity(NamedTuple):
     """A Home Assistant user, as forwarded by Supervisor."""

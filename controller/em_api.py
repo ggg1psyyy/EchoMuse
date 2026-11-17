@@ -150,10 +150,12 @@ async def _ingress_only_middleware(request: web.Request, handler):
     As a Home Assistant add-on, the dashboard/API must only be reachable
     through the authenticated ingress gateway — the add-on has no other
     auth in front of it on the LAN otherwise. No-op (INGRESS_ONLY unset)
-    for every deployment that isn't the add-on.
+    for every deployment that isn't the add-on. The local dev add-on alone
+    also admits loopback (em_ingressauth.DEV_ADMIT_LOOPBACK, dev/tools only).
     """
-    if (em_ingressauth.INGRESS_ONLY
-            and request.remote != em_ingressauth.INGRESS_GATEWAY_IP):
+    if not em_ingressauth.admits_peer(request.remote,
+                                      ingress_only=em_ingressauth.INGRESS_ONLY,
+                                      dev_loopback=em_ingressauth.DEV_ADMIT_LOOPBACK):
         log.warning("Rejected non-ingress request from %s", request.remote)
         raise web.HTTPForbidden(text="Home Assistant Ingress is required")
     return await handler(request)
